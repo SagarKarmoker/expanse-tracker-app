@@ -1,6 +1,7 @@
 "use client";
 import { useAuth } from '@workos-inc/authkit-nextjs/components';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function Navbar() {
     const { user } = useAuth();
@@ -20,19 +21,23 @@ export default function Navbar() {
             </div>
             <div>
                 {user ? (
-                    <Link
-                        href="/dashboard"
+                    <Button
                         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                        asChild
                     >
-                        Dashboard
-                    </Link>
+                        <Link href="/dashboard">
+                            Dashboard
+                        </Link>
+                    </Button>
                 ) : (
-                    <Link
-                        href="/auth"
-                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                    <Button
+                        variant="outline"
+                        asChild
                     >
-                        Login
-                    </Link>
+                        <Link href="/auth">
+                            Login
+                        </Link>
+                    </Button>
                 )}
             </div>
         </nav>
