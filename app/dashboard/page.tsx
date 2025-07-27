@@ -12,9 +12,10 @@ import {
     TrendingUp,
     MoreHorizontal,
     Save,
-    X
+    X,
+    Trash2
 } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -24,10 +25,45 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import axios from 'axios'
+import api from '@/lib/api'
+import { Expense, CreateExpenseData } from '@/lib/types'
 
 export default function Dashboard() {
     const { signOut, user } = useAuth();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [formData, setFormData] = useState<CreateExpenseData>({
+        name: '',
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        category: '',
+        description: ''
+    });
+
+    // Fetch expenses on component mount
+    useEffect(() => {
+        fetchExpenses();
+    }, []);
+
+    const fetchExpenses = async () => {
+        try {
+            const response = await api.get<Expense[]>('/expense', {
+                headers: {
+                    'Authorization': `Bearer ${user?.id}`,
+                },
+            });
+            setExpenses(response.data);
+        } catch (error) {
+            console.error('Error fetching expenses:', error);
+            if (axios.isAxiosError(error)) {
+                console.error('Axios error details:', error.response?.data);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleAddExpense = () => {
         setIsDialogOpen(true);
@@ -35,7 +71,83 @@ export default function Dashboard() {
 
     const handleDialogOpenChange = (open: boolean) => {
         setIsDialogOpen(open);
+        if (!open) {
+            // Reset form when dialog closes
+            setFormData({
+                name: '',
+                amount: '',
+                date: new Date().toISOString().split('T')[0],
+                category: '',
+                description: ''
+            });
+        }
     };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        try {
+            await api.post('/expense', formData, {
+                headers: {
+                    'Authorization': `Bearer ${user?.id}`,
+                },
+            });
+
+            setIsDialogOpen(false);
+            setFormData({
+                name: '',
+                amount: '',
+                date: new Date().toISOString().split('T')[0],
+                category: '',
+                description: ''
+            });
+            fetchExpenses(); // Refresh the list
+        } catch (error) {
+            console.error('Error creating expense:', error);
+            if (axios.isAxiosError(error)) {
+                const errorMessage = error.response?.data?.error || 'Failed to create expense';
+                alert(errorMessage);
+            } else {
+                alert('Failed to create expense');
+            }
+        }
+    };
+
+    const handleDeleteExpense = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this expense?')) {
+            return;
+        }
+
+        try {
+            await api.delete(`/expense?id=${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${user?.id}`,
+                },
+            });
+
+            fetchExpenses(); // Refresh the list
+        } catch (error) {
+            console.error('Error deleting expense:', error);
+            if (axios.isAxiosError(error)) {
+                const errorMessage = error.response?.data?.error || 'Failed to delete expense';
+                alert(errorMessage);
+            } else {
+                alert('Failed to delete expense');
+            }
+        }
+    };
+
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount / 100, 0);
+    const thisMonthExpenses = expenses
+        .filter(expense => {
+            const expenseDate = new Date(expense.date);
+            const now = new Date();
+            return expenseDate.getMonth() === now.getMonth() && 
+                   expenseDate.getFullYear() === now.getFullYear();
+        })
+        .reduce((sum, expense) => sum + expense.amount / 100, 0);
+
+    const categoryCount = new Set(expenses.map(expense => expense.category)).size;
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -63,8 +175,8 @@ export default function Dashboard() {
             </nav>
 
             <main className="container mx-auto px-4 py-8">
-                <div className="max-w-4xl mx-auto">
-                    <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="max-w-6xl mx-auto">
+                    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
                         <div className="flex items-center space-x-2 mb-4">
                             <TrendingUp className="w-6 h-6 text-blue-600" />
                             <h2 className="text-2xl font-bold text-gray-900">
@@ -81,23 +193,73 @@ export default function Dashboard() {
                                     <DollarSign className="w-5 h-5 text-blue-600" />
                                     <h3 className="font-semibold text-blue-900">Total Expenses</h3>
                                 </div>
-                                <p className="text-2xl font-bold text-blue-600">$0.00</p>
+                                <p className="text-2xl font-bold text-blue-600">${totalExpenses.toFixed(2)}</p>
                             </div>
                             <div className="bg-green-50 p-4 rounded-lg">
                                 <div className="flex items-center space-x-2 mb-2">
                                     <Calendar className="w-5 h-5 text-green-600" />
                                     <h3 className="font-semibold text-green-900">This Month</h3>
                                 </div>
-                                <p className="text-2xl font-bold text-green-600">$0.00</p>
+                                <p className="text-2xl font-bold text-green-600">${thisMonthExpenses.toFixed(2)}</p>
                             </div>
                             <div className="bg-purple-50 p-4 rounded-lg">
                                 <div className="flex items-center space-x-2 mb-2">
                                     <Tag className="w-5 h-5 text-purple-600" />
                                     <h3 className="font-semibold text-purple-900">Categories</h3>
                                 </div>
-                                <p className="text-2xl font-bold text-purple-600">0</p>
+                                <p className="text-2xl font-bold text-purple-600">{categoryCount}</p>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Expenses List */}
+                    <div className="bg-white rounded-lg shadow-sm p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-semibold text-gray-900">Recent Expenses</h3>
+                        </div>
+                        
+                        {loading ? (
+                            <div className="text-center py-8">
+                                <p className="text-gray-500">Loading expenses...</p>
+                            </div>
+                        ) : expenses.length === 0 ? (
+                            <div className="text-center py-8">
+                                <p className="text-gray-500">No expenses yet. Add your first expense!</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {expenses.map((expense) => (
+                                    <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                                <DollarSign className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-900">
+                                                    ${(expense.amount / 100).toFixed(2)}
+                                                </p>
+                                                <p className="text-sm text-gray-500">
+                                                    {expense.category} • {new Date(expense.date).toLocaleDateString()}
+                                                </p>
+                                                {expense.description && (
+                                                    <p className="text-sm text-gray-400">{expense.description}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleDeleteExpense(expense.id)}
+                                                className="text-red-600 hover:text-red-700"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>
@@ -115,13 +277,14 @@ export default function Dashboard() {
                         </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="flex flex-col gap-4 mt-4">
-                        <div className="relative">
-                            <Receipt className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                            <Input 
-                                type="text" 
-                                placeholder="Expense Name" 
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
+                        <div className="flex items-center space-x-2">
+                            <Input
+                                type="text"
+                                placeholder="Name"
                                 className="pl-10"
+                                value={formData.name}
+                                onChange={(e) => setFormData({...formData, name: e.target.value})}
                             />
                         </div>
                         <div className="relative">
@@ -130,6 +293,11 @@ export default function Dashboard() {
                                 type="number" 
                                 placeholder="Amount" 
                                 className="pl-10"
+                                value={formData.amount}
+                                onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                                step="0.01"
+                                min="0"
+                                required
                             />
                         </div>
                         <div className="relative">
@@ -137,30 +305,37 @@ export default function Dashboard() {
                             <Input
                                 type="date"
                                 placeholder="Date"
-                                defaultValue={new Date().toISOString().split('T')[0]}
                                 className="pl-10"
+                                value={formData.date}
+                                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                required
                             />
                         </div>
                         <div className="relative">
                             <Tag className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                            <select className="w-full border rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500" defaultValue="">
-                                <option value="" disabled>
-                                    Select Category
-                                </option>
-                                <option value="food">🍽️ Food</option>
-                                <option value="transport">🚗 Transport</option>
-                                <option value="entertainment">🎮 Entertainment</option>
-                                <option value="utilities">⚡ Utilities</option>
-                                <option value="shopping">🛒 Shopping</option>
-                                <option value="health">❤️ Health</option>
-                                <option value="other">📦 Other</option>
+                            <select 
+                                className="w-full border rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={formData.category}
+                                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                required
+                            >
+                                <option value="">Select Category</option>
+                                <option value="FOOD">🍽️ Food</option>
+                                <option value="TRANSPORT">🚗 Transport</option>
+                                <option value="ENTERTAINMENT">🎮 Entertainment</option>
+                                <option value="UTILITIES">⚡ Utilities</option>
+                                <option value="SHOPPING">🛒 Shopping</option>
+                                <option value="HEALTH">❤️ Health</option>
+                                <option value="OTHER">📦 Other</option>
                             </select>
                         </div>
                         <div className="relative">
                             <MoreHorizontal className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                             <Textarea 
-                                placeholder="Description" 
+                                placeholder="Description (optional)" 
                                 className="pl-10"
+                                value={formData.description}
+                                onChange={(e) => setFormData({...formData, description: e.target.value})}
                             />
                         </div>
                         <div className="flex space-x-2 pt-2">
@@ -172,6 +347,7 @@ export default function Dashboard() {
                                 <span>Add Expense</span>
                             </Button>
                             <Button 
+                                type="button"
                                 variant="outline" 
                                 onClick={() => setIsDialogOpen(false)}
                                 className="flex items-center space-x-2"
@@ -180,7 +356,7 @@ export default function Dashboard() {
                                 <span>Cancel</span>
                             </Button>
                         </div>
-                    </div>
+                    </form>
                 </DialogContent>
             </Dialog>
 

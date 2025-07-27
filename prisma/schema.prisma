@@ -22,4 +22,30 @@ model User {
   lastName  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  expenses Expense[]
+}
+
+enum ExpenseCategory {
+  FOOD
+  TRANSPORT
+  ENTERTAINMENT
+  HOUSING
+  SHOPPING
+  HEALTH
+  UTILITIES
+  OTHER
+}
+
+model Expense {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [workosId])
+  name        String
+  amount      Int
+  date        DateTime
+  category    ExpenseCategory
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 }
