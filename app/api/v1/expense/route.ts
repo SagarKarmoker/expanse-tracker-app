@@ -1,25 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-
-// Helper function to get user from request headers
-async function getUserFromRequest(req: NextRequest) {
-  // For now, we'll use a simple approach
-  // In a real app, you'd extract the user from the session/token
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader) {
-    return null;
-  }
-  
-  // This is a placeholder - you'll need to implement proper auth
-  // For now, we'll assume the user ID is in the header
-  const userId = authHeader.replace('Bearer ', '');
-  return { id: userId };
-}
+import { withAuth } from '@workos-inc/authkit-nextjs';
 
 // GET /api/v1/expense - Get all expenses for the authenticated user
 export async function GET(req: NextRequest) {
   try {
-    const user = await getUserFromRequest(req);
+    const { user } = await withAuth();
+    console.log(user)
     if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -49,7 +36,7 @@ export async function GET(req: NextRequest) {
 // POST /api/v1/expense - Create a new expense
 export async function POST(req: NextRequest) {
   try {
-    const user = await getUserFromRequest(req);
+    const { user } = await withAuth();
     if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -61,9 +48,9 @@ export async function POST(req: NextRequest) {
     const { name, amount, date, category, description } = body;
 
     // Validate required fields
-    if (!amount || !date || !category) {
+    if (!name || !amount || !date || !category) {
       return NextResponse.json(
-        { error: "Missing required fields: amount, date, category" },
+        { error: "Missing required fields: name, amount, date, category" },
         { status: 400 }
       );
     }
@@ -109,7 +96,7 @@ export async function POST(req: NextRequest) {
 // PUT /api/v1/expense - Update an existing expense
 export async function PUT(req: NextRequest) {
   try {
-    const user = await getUserFromRequest(req);
+    const { user } = await withAuth();
     if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -150,6 +137,7 @@ export async function PUT(req: NextRequest) {
       description?: string | null;
     } = {};
 
+    if (name !== undefined) updateData.name = name;
     if (amount !== undefined) {
       if (amount <= 0) {
         return NextResponse.json(
@@ -190,7 +178,7 @@ export async function PUT(req: NextRequest) {
 // DELETE /api/v1/expense - Delete an expense
 export async function DELETE(req: NextRequest) {
   try {
-    const user = await getUserFromRequest(req);
+    const { user } = await withAuth();
     if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },

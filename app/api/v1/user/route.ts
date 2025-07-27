@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 
 // GET /api/v1/user - Get user information
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
+    const { user: authUser } = await withAuth();
+
+    if (!authUser || !authUser.id) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
+      { error: "Unauthorized" },
+      { status: 401 }
       );
     }
-    
-    const userId = authHeader.replace('Bearer ', '');
-    
+
     const user = await prisma.user.findUnique({
       where: {
-        id: userId,
+      id: authUser.id,
       },
       select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        createdAt: true,
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      createdAt: true,
       },
     });
 

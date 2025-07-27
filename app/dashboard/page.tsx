@@ -1,13 +1,13 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@workos-inc/authkit-nextjs/components'
-import { 
-    Plus, 
-    DollarSign, 
-    Calendar, 
-    Tag, 
-    LogOut, 
-    User, 
+import {
+    Plus,
+    DollarSign,
+    Calendar,
+    Tag,
+    LogOut,
+    User,
     Receipt,
     TrendingUp,
     MoreHorizontal,
@@ -49,11 +49,7 @@ export default function Dashboard() {
 
     const fetchExpenses = async () => {
         try {
-            const response = await api.get<Expense[]>('/expense', {
-                headers: {
-                    'Authorization': `Bearer ${user?.id}`,
-                },
-            });
+            const response = await api.get<Expense[]>('/expense');
             setExpenses(response.data);
         } catch (error) {
             console.error('Error fetching expenses:', error);
@@ -85,13 +81,9 @@ export default function Dashboard() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         try {
-            await api.post('/expense', formData, {
-                headers: {
-                    'Authorization': `Bearer ${user?.id}`,
-                },
-            });
+            await api.post('/expense', formData);
 
             setIsDialogOpen(false);
             setFormData({
@@ -119,11 +111,7 @@ export default function Dashboard() {
         }
 
         try {
-            await api.delete(`/expense?id=${id}`, {
-                headers: {
-                    'Authorization': `Bearer ${user?.id}`,
-                },
-            });
+            await api.delete(`/expense?id=${id}`);
 
             fetchExpenses(); // Refresh the list
         } catch (error) {
@@ -142,8 +130,8 @@ export default function Dashboard() {
         .filter(expense => {
             const expenseDate = new Date(expense.date);
             const now = new Date();
-            return expenseDate.getMonth() === now.getMonth() && 
-                   expenseDate.getFullYear() === now.getFullYear();
+            return expenseDate.getMonth() === now.getMonth() &&
+                expenseDate.getFullYear() === now.getFullYear();
         })
         .reduce((sum, expense) => sum + expense.amount / 100, 0);
 
@@ -217,7 +205,7 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-xl font-semibold text-gray-900">Recent Expenses</h3>
                         </div>
-                        
+
                         {loading ? (
                             <div className="text-center py-8">
                                 <p className="text-gray-500">Loading expenses...</p>
@@ -228,7 +216,7 @@ export default function Dashboard() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {expenses.map((expense) => (
+                                {expenses.map((expense : Expense) => (
                                     <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
                                         <div className="flex items-center space-x-4">
                                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -236,7 +224,7 @@ export default function Dashboard() {
                                             </div>
                                             <div>
                                                 <p className="font-medium text-gray-900">
-                                                    ${(expense.amount / 100).toFixed(2)}
+                                                    {expense.name} — ${(expense.amount / 100).toFixed(2)}
                                                 </p>
                                                 <p className="text-sm text-gray-500">
                                                     {expense.category} • {new Date(expense.date).toLocaleDateString()}
@@ -276,25 +264,28 @@ export default function Dashboard() {
                             Enter the details for your new expense below.
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
-                        <div className="flex items-center space-x-2">
-                            <Input
-                                type="text"
-                                placeholder="Name"
-                                className="pl-10"
-                                value={formData.name}
-                                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            />
+                        <div className='relative'>
+                            <User className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                            <div className="flex items-center space-x-2">
+                                <Input
+                                    type="text"
+                                    placeholder="Name"
+                                    className="pl-10"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                />
+                            </div>
                         </div>
                         <div className="relative">
                             <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                            <Input 
-                                type="number" 
-                                placeholder="Amount" 
+                            <Input
+                                type="number"
+                                placeholder="Amount"
                                 className="pl-10"
                                 value={formData.amount}
-                                onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                                 step="0.01"
                                 min="0"
                                 required
@@ -307,16 +298,16 @@ export default function Dashboard() {
                                 placeholder="Date"
                                 className="pl-10"
                                 value={formData.date}
-                                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                                 required
                             />
                         </div>
                         <div className="relative">
                             <Tag className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                            <select 
+                            <select
                                 className="w-full border rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 value={formData.category}
-                                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                                 required
                             >
                                 <option value="">Select Category</option>
@@ -331,24 +322,24 @@ export default function Dashboard() {
                         </div>
                         <div className="relative">
                             <MoreHorizontal className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                            <Textarea 
-                                placeholder="Description (optional)" 
+                            <Textarea
+                                placeholder="Description (optional)"
                                 className="pl-10"
                                 value={formData.description}
-                                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                             />
                         </div>
                         <div className="flex space-x-2 pt-2">
-                            <Button 
-                                type="submit" 
+                            <Button
+                                type="submit"
                                 className="flex items-center space-x-2 flex-1"
                             >
                                 <Save className="w-4 h-4" />
                                 <span>Add Expense</span>
                             </Button>
-                            <Button 
+                            <Button
                                 type="button"
-                                variant="outline" 
+                                variant="outline"
                                 onClick={() => setIsDialogOpen(false)}
                                 className="flex items-center space-x-2"
                             >

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['@prisma/client'],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -19,6 +20,7 @@ const nextConfig: NextConfig = {
         path: false,
       };
     }
+    
     return config;
   },
 };
