@@ -13,7 +13,8 @@ import {
     MoreHorizontal,
     Save,
     X,
-    Trash2
+    Trash2,
+    Edit
 } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import {
@@ -34,6 +35,7 @@ export default function Dashboard() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
+    const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [formData, setFormData] = useState<CreateExpenseData>({
         name: '',
         amount: '',
@@ -62,6 +64,26 @@ export default function Dashboard() {
     };
 
     const handleAddExpense = () => {
+        setEditingExpense(null);
+        setFormData({
+            name: '',
+            amount: '',
+            date: new Date().toISOString().split('T')[0],
+            category: '',
+            description: ''
+        });
+        setIsDialogOpen(true);
+    };
+
+    const handleEditExpense = (expense: Expense) => {
+        setEditingExpense(expense);
+        setFormData({
+            name: expense.name,
+            amount: (expense.amount / 100).toString(),
+            date: new Date(expense.date).toISOString().split('T')[0],
+            category: expense.category,
+            description: expense.description || ''
+        });
         setIsDialogOpen(true);
     };
 
@@ -69,6 +91,7 @@ export default function Dashboard() {
         setIsDialogOpen(open);
         if (!open) {
             // Reset form when dialog closes
+            setEditingExpense(null);
             setFormData({
                 name: '',
                 amount: '',
@@ -83,9 +106,19 @@ export default function Dashboard() {
         e.preventDefault();
 
         try {
-            await api.post('/expense', formData);
+            if (editingExpense) {
+                // Update existing expense
+                await api.put('/expense', {
+                    id: editingExpense.id,
+                    ...formData
+                });
+            } else {
+                // Create new expense
+                await api.post('/expense', formData);
+            }
 
             setIsDialogOpen(false);
+            setEditingExpense(null);
             setFormData({
                 name: '',
                 amount: '',
@@ -95,12 +128,12 @@ export default function Dashboard() {
             });
             fetchExpenses(); // Refresh the list
         } catch (error) {
-            console.error('Error creating expense:', error);
+            console.error('Error saving expense:', error);
             if (axios.isAxiosError(error)) {
-                const errorMessage = error.response?.data?.error || 'Failed to create expense';
+                const errorMessage = error.response?.data?.error || `Failed to ${editingExpense ? 'update' : 'create'} expense`;
                 alert(errorMessage);
             } else {
-                alert('Failed to create expense');
+                alert(`Failed to ${editingExpense ? 'update' : 'create'} expense`);
             }
         }
     };
@@ -135,7 +168,30 @@ export default function Dashboard() {
         })
         .reduce((sum, expense) => sum + expense.amount / 100, 0);
 
+    const todaysExpenses = expenses
+        .filter(expense => {
+            const expenseDate = new Date(expense.date);
+            const today = new Date();
+            return expenseDate.toDateString() === today.toDateString();
+        })
+        .reduce((sum, expense) => sum + expense.amount / 100, 0);
+
     const categoryCount = new Set(expenses.map(expense => expense.category)).size;
+
+    // Group expenses by date
+    const groupedExpenses = expenses.reduce((groups: { [key: string]: Expense[] }, expense) => {
+        const date = new Date(expense.date).toDateString();
+        if (!groups[date]) {
+            groups[date] = [];
+        }
+        groups[date].push(expense);
+        return groups;
+    }, {});
+
+    // Sort dates in descending order (most recent first)
+    const sortedDates = Object.keys(groupedExpenses).sort((a, b) => 
+        new Date(b).getTime() - new Date(a).getTime()
+    );
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -181,21 +237,21 @@ export default function Dashboard() {
                                     <DollarSign className="w-5 h-5 text-blue-600" />
                                     <h3 className="font-semibold text-blue-900">Total Expenses</h3>
                                 </div>
-                                <p className="text-2xl font-bold text-blue-600">${totalExpenses.toFixed(2)}</p>
+                                <p className="text-2xl font-bold text-blue-600">৳{totalExpenses.toFixed(2)}</p>
                             </div>
                             <div className="bg-green-50 p-4 rounded-lg">
                                 <div className="flex items-center space-x-2 mb-2">
                                     <Calendar className="w-5 h-5 text-green-600" />
                                     <h3 className="font-semibold text-green-900">This Month</h3>
                                 </div>
-                                <p className="text-2xl font-bold text-green-600">${thisMonthExpenses.toFixed(2)}</p>
+                                <p className="text-2xl font-bold text-green-600">৳{thisMonthExpenses.toFixed(2)}</p>
                             </div>
-                            <div className="bg-purple-50 p-4 rounded-lg">
+                            <div className="bg-orange-50 p-4 rounded-lg">
                                 <div className="flex items-center space-x-2 mb-2">
-                                    <Tag className="w-5 h-5 text-purple-600" />
-                                    <h3 className="font-semibold text-purple-900">Categories</h3>
+                                    <TrendingUp className="w-5 h-5 text-orange-600" />
+                                    <h3 className="font-semibold text-orange-900">Today's Expenses</h3>
                                 </div>
-                                <p className="text-2xl font-bold text-purple-600">{categoryCount}</p>
+                                <p className="text-2xl font-bold text-orange-600">৳{todaysExpenses.toFixed(2)}</p>
                             </div>
                         </div>
                     </div>
@@ -215,37 +271,74 @@ export default function Dashboard() {
                                 <p className="text-gray-500">No expenses yet. Add your first expense!</p>
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                {expenses.map((expense : Expense) => (
-                                    <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
-                                        <div className="flex items-center space-x-4">
-                                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                                <DollarSign className="w-5 h-5 text-blue-600" />
+                            <div className="space-y-6">
+                                {sortedDates.map((dateString) => {
+                                    const dateExpenses = groupedExpenses[dateString];
+                                    const dayTotal = dateExpenses.reduce((sum, expense) => sum + expense.amount / 100, 0);
+                                    const isToday = new Date(dateString).toDateString() === new Date().toDateString();
+                                    const isYesterday = new Date(dateString).toDateString() === new Date(Date.now() - 86400000).toDateString();
+                                    
+                                    let displayDate = new Date(dateString).toLocaleDateString('en-US', { 
+                                        weekday: 'long', 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                    });
+                                    
+                                    if (isToday) displayDate = "Today";
+                                    else if (isYesterday) displayDate = "Yesterday";
+
+                                    return (
+                                        <div key={dateString} className="border rounded-lg p-4">
+                                            <div className="flex items-center justify-between mb-4 pb-2 border-b">
+                                                <h4 className="font-semibold text-gray-900">{displayDate}</h4>
+                                                <span className="text-sm font-medium text-gray-600">
+                                                    Total: ৳{dayTotal.toFixed(2)}
+                                                </span>
                                             </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900">
-                                                    {expense.name} — ${(expense.amount / 100).toFixed(2)}
-                                                </p>
-                                                <p className="text-sm text-gray-500">
-                                                    {expense.category} • {new Date(expense.date).toLocaleDateString()}
-                                                </p>
-                                                {expense.description && (
-                                                    <p className="text-sm text-gray-400">{expense.description}</p>
-                                                )}
+                                            <div className="space-y-3">
+                                                {dateExpenses.map((expense: Expense) => (
+                                                    <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                        <div className="flex items-center space-x-4">
+                                                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                                                <DollarSign className="w-4 h-4 text-blue-600" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-gray-900">
+                                                                    {expense.name} — ৳{(expense.amount / 100).toFixed(2)}
+                                                                </p>
+                                                                <p className="text-sm text-gray-500">
+                                                                    {expense.category}
+                                                                </p>
+                                                                {expense.description && (
+                                                                    <p className="text-sm text-gray-400">{expense.description}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleEditExpense(expense)}
+                                                                className="text-blue-600 hover:text-blue-700"
+                                                            >
+                                                                <Edit className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleDeleteExpense(expense.id)}
+                                                                className="text-red-600 hover:text-red-700"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleDeleteExpense(expense.id)}
-                                                className="text-red-600 hover:text-red-700"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -257,11 +350,11 @@ export default function Dashboard() {
                 <DialogContent>
                     <DialogHeader>
                         <div className="flex items-center space-x-2">
-                            <Plus className="w-5 h-5 text-blue-600" />
-                            <DialogTitle>Add New Expense</DialogTitle>
+                            {editingExpense ? <Edit className="w-5 h-5 text-blue-600" /> : <Plus className="w-5 h-5 text-blue-600" />}
+                            <DialogTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
                         </div>
                         <DialogDescription>
-                            Enter the details for your new expense below.
+                            {editingExpense ? 'Update the details for your expense below.' : 'Enter the details for your new expense below.'}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -335,7 +428,7 @@ export default function Dashboard() {
                                 className="flex items-center space-x-2 flex-1"
                             >
                                 <Save className="w-4 h-4" />
-                                <span>Add Expense</span>
+                                <span>{editingExpense ? 'Update Expense' : 'Add Expense'}</span>
                             </Button>
                             <Button
                                 type="button"
