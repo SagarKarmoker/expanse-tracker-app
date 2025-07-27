@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@prisma/client"],
 
   webpack: (config, { isServer }) => {
+    // Fix for Prisma Client on Vercel
+    if (isServer) {
+      config.externals.push('@prisma/client');
+    }
     return config;
   },
 };
