@@ -26,6 +26,7 @@ export interface CreateExpenseData {
 }
 
 export interface UpdateExpenseData {
+  name?: string;
   id: string;
   amount?: string;
   date?: string;

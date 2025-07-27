@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { amount, date, category, description } = body;
+    const { name, amount, date, category, description } = body;
 
     // Validate required fields
     if (!amount || !date || !category) {
@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
     const expense = await prisma.expense.create({
       data: {
         userId: user.id,
+        name: name,
         amount: Math.round(amount * 100), // Convert to cents for precision
         date: new Date(date),
         category: category as 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'HOUSING' | 'SHOPPING' | 'HEALTH' | 'UTILITIES' | 'OTHER',
@@ -117,7 +118,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { id, amount, date, category, description } = body;
+    const { id, name, amount, date, category, description } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -142,6 +143,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const updateData: {
+      name?: string;
       amount?: number;
       date?: Date;
       category?: 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'HOUSING' | 'SHOPPING' | 'HEALTH' | 'UTILITIES' | 'OTHER';
