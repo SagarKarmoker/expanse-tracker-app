@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 
 // GET /api/v1/user - Get user information
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const { user: authUser } = await withAuth();
 

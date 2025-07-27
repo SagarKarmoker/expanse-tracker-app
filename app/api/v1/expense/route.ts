@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { withAuth } from '@workos-inc/authkit-nextjs';
 
 // GET /api/v1/expense - Get all expenses for the authenticated user
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const { user } = await withAuth();
     if (!user) {

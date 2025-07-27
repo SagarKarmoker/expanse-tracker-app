@@ -176,7 +176,8 @@ export default function Dashboard() {
         })
         .reduce((sum, expense) => sum + expense.amount / 100, 0);
 
-    const categoryCount = new Set(expenses.map(expense => expense.category)).size;
+    // Remove unused categoryCount variable
+    // const categoryCount = new Set(expenses.map(expense => expense.category)).size;
 
     // Group expenses by date
     const groupedExpenses = expenses.reduce((groups: { [key: string]: Expense[] }, expense) => {
@@ -249,7 +250,7 @@ export default function Dashboard() {
                             <div className="bg-orange-50 p-4 rounded-lg">
                                 <div className="flex items-center space-x-2 mb-2">
                                     <TrendingUp className="w-5 h-5 text-orange-600" />
-                                    <h3 className="font-semibold text-orange-900">Today's Expenses</h3>
+                                    <h3 className="font-semibold text-orange-900">Today&apos;s Expenses</h3>
                                 </div>
                                 <p className="text-2xl font-bold text-orange-600">৳{todaysExpenses.toFixed(2)}</p>
                             </div>
